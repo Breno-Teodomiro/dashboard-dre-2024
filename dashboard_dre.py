@@ -165,6 +165,7 @@ def chart_base(h=None):
         font=dict(color=C["text"], family="Inter, Segoe UI, sans-serif", size=11),
         legend=dict(bgcolor="rgba(0,0,0,0)", font=dict(size=10), orientation="h", y=1.05),
         hoverlabel=dict(bgcolor=C["card2"], bordercolor=C["border"], font=dict(color=C["text"], size=11)),
+        hovermode="closest",
     )
     if h: d["height"] = h
     return d
@@ -218,7 +219,7 @@ with st.sidebar:
             st.session_state.f_cat = "Todas"
             st.rerun()
 
-    st.markdown("<div style='margin-bottom:8px;'></div>", unsafe_allow_html=True)
+    st.write("")
 
     trimestre = st.selectbox("Trimestre", ["Todos"] + sorted(df["trimestre"].unique().tolist()), key="f_tri")
     regiao    = st.selectbox("Região",    ["Todas"] + sorted(df["regiao"].unique().tolist()),    key="f_reg")
@@ -306,7 +307,7 @@ for col, lbl, val, cor, sub in kpis:
     with col:
         st.markdown(kpi_html(lbl, val, cor, sub), unsafe_allow_html=True)
 
-st.markdown("<br>", unsafe_allow_html=True)
+st.write("")
 
 # ─── TABS ────────────────────────────────────────────────────────────────────
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
@@ -598,22 +599,25 @@ with tab3:
 
     with col_b:
         sec("Composição dos Custos Diretos")
-        custos = (dff[dff["grupo_dre"].isin(["CMV","CSP"])]
-                  .groupby(["grupo_dre","conta_contabil"])["valor"].sum()
-                  .abs().reset_index())
+        custos_child = (dff[dff["grupo_dre"].isin(["CMV","CSP"])]
+                        .groupby(["grupo_dre","conta_contabil"])["valor"].sum()
+                        .abs().reset_index())
+        custos_parent = custos_child.groupby("grupo_dre")["valor"].sum().reset_index()
+
+        t_labels  = custos_parent["grupo_dre"].tolist() + custos_child["conta_contabil"].tolist()
+        t_parents = [""] * len(custos_parent) + custos_child["grupo_dre"].tolist()
+        t_values  = custos_parent["valor"].tolist() + custos_child["valor"].tolist()
+        t_fmt     = [fmt_M(v) for v in t_values]
+
         fig = go.Figure(go.Treemap(
-            labels=custos["conta_contabil"],
-            parents=custos["grupo_dre"],
-            values=custos["valor"],
-            textinfo="label+value+percent parent",
-            texttemplate="<b>%{label}</b><br>%{customdata}<br>%{percentParent:.1%}",
-            customdata=[fmt_M(v) for v in custos["valor"]],
+            labels=t_labels, parents=t_parents, values=t_values,
+            customdata=t_fmt,
+            texttemplate="<b>%{label}</b><br>%{customdata}",
             marker=dict(
                 colorscale=[[0,C["accent"]],[1,C["red"]]],
-                cmid=custos["valor"].mean(),
                 line=dict(width=1, color=C["bg"]),
             ),
-            hovertemplate="<b>%{label}</b><br>Grupo: %{parent}<br>Valor: %{customdata}<br>%{percentParent:.1%} do grupo<extra></extra>",
+            hovertemplate="<b>%{label}</b><br>Valor: %{customdata}<br>%{percentParent:.1%} do grupo<extra></extra>",
         ))
         fig.update_layout(**chart_base(350), margin=dict(l=8,r=8,t=30,b=8))
         st.plotly_chart(fig, use_container_width=True)
@@ -714,23 +718,26 @@ with tab4:
 
     with col_b:
         sec("Treemap — Receita por Região e Filial")
-        tree = (dff[dff["grupo_dre"]=="Receita Bruta"]
-                .groupby(["regiao","filial_nome"])["valor"].sum().reset_index())
-        tree["filial_short"] = tree["filial_nome"].str.replace("Filial ","").str.replace("Matriz ","★ ")
-        tree["fmt"] = tree["valor"].apply(fmt_M)
+        tree_fil = (dff[dff["grupo_dre"]=="Receita Bruta"]
+                    .groupby(["regiao","filial_nome"])["valor"].sum().reset_index())
+        tree_fil["filial_short"] = (tree_fil["filial_nome"]
+                                    .str.replace("Filial ","").str.replace("Matriz ","★ "))
+        tree_reg = tree_fil.groupby("regiao")["valor"].sum().reset_index()
+
+        t_labels  = tree_reg["regiao"].tolist() + tree_fil["filial_short"].tolist()
+        t_parents = [""] * len(tree_reg) + tree_fil["regiao"].tolist()
+        t_values  = tree_reg["valor"].tolist() + tree_fil["valor"].tolist()
+        t_fmt     = [fmt_M(v) for v in t_values]
 
         fig = go.Figure(go.Treemap(
-            labels=tree["filial_short"],
-            parents=tree["regiao"],
-            values=tree["valor"],
+            labels=t_labels, parents=t_parents, values=t_values,
+            customdata=t_fmt,
             texttemplate="<b>%{label}</b><br>%{customdata}",
-            customdata=tree["fmt"],
             marker=dict(
                 colorscale=[[0,C["card2"]],[0.5,C["accent"]],[1,C["cyan"]]],
-                cmid=tree["valor"].median(),
                 line=dict(width=2, color=C["bg"]),
             ),
-            hovertemplate="<b>%{label}</b><br>Região: %{parent}<br>Receita: %{customdata}<extra></extra>",
+            hovertemplate="<b>%{label}</b><br>Receita: %{customdata}<br>%{percentParent:.1%} da região<extra></extra>",
         ))
         fig.update_layout(**chart_base(320), margin=dict(l=8,r=8,t=30,b=8))
         st.plotly_chart(fig, use_container_width=True)
@@ -839,7 +846,7 @@ with tab5:
                     <div style='color:{C["muted"]};font-size:11px;line-height:1.5;'>{texto}</div>
                 </div>""", unsafe_allow_html=True)
 
-        st.markdown("<br>", unsafe_allow_html=True)
+        st.write("")
 
         # ── Insights estratégicos ──────────────────────────────────────────
         sec("💡 Insights para Tomada de Decisão")
