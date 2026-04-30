@@ -74,9 +74,19 @@ div[data-baseweb="select"] > div {{ background-color:{C['card2']} !important; bo
 """, unsafe_allow_html=True)
 
 # ─── DADOS ───────────────────────────────────────────────────────────────────
-@st.cache_data
+SHEET_ID  = "1NN-6E7B0CBMmc1LWpXZjixxG2gbosSkvAO6ZHEb3YGo"
+SHEET_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv"
+
+@st.cache_data(ttl=300)   # recarrega do Sheets a cada 5 minutos
 def load_data():
-    df = pd.read_csv("DADOS/dre_dataset.csv", sep=";", decimal=",")
+    try:
+        df = pd.read_csv(SHEET_URL)
+        # detecta separador decimal baseado no dtype da coluna valor
+        if df["valor"].dtype == object:
+            df["valor"] = df["valor"].str.replace(",", ".").astype(float)
+    except Exception:
+        # fallback para arquivo local se o Sheets estiver inacessível
+        df = pd.read_csv("DADOS/dre_dataset.csv", sep=";", decimal=",")
     df["data"]    = pd.to_datetime(df["data"])
     df["mes_ano"] = df["data"].dt.to_period("M").astype(str)
     df["mes_num"] = df["data"].dt.month
