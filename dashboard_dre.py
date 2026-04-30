@@ -400,9 +400,9 @@ with tab1:
                     bgcolor=C["card2"],
                     borderwidth=0,
                     steps=[
-                        dict(range=[-10, ref*0.7], color="#ff525220"),
-                        dict(range=[ref*0.7, ref],  color="#ffd74020"),
-                        dict(range=[ref, max(ref*1.5, val*1.2)], color="#00e67620"),
+                        dict(range=[-10, ref*0.7], color="rgba(255,82,82,0.12)"),
+                        dict(range=[ref*0.7, ref],  color="rgba(255,215,64,0.12)"),
+                        dict(range=[ref, max(ref*1.5, val*1.2)], color="rgba(0,230,118,0.12)"),
                     ],
                     threshold=dict(line=dict(color=C["text"], width=2),
                                    thickness=0.8, value=ref),
