@@ -236,7 +236,7 @@ with st.sidebar:
             st.session_state.f_cat = "Todas"
             st.rerun()
 
-    st.write("")
+    st.markdown('<div style="height:0.5rem"></div>', unsafe_allow_html=True)
 
     trimestre = st.selectbox("Trimestre", ["Todos"] + sorted(df["trimestre"].unique().tolist()), key="f_tri")
     regiao    = st.selectbox("Região",    ["Todas"] + sorted(df["regiao"].unique().tolist()),    key="f_reg")
@@ -324,7 +324,7 @@ for col, lbl, val, cor, sub in kpis:
     with col:
         st.markdown(kpi_html(lbl, val, cor, sub), unsafe_allow_html=True)
 
-st.write("")
+st.markdown('<div style="height:0.5rem"></div>', unsafe_allow_html=True)
 
 # ─── TABS ────────────────────────────────────────────────────────────────────
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
@@ -863,7 +863,7 @@ with tab5:
                     <div style='color:{C["muted"]};font-size:11px;line-height:1.5;'>{texto}</div>
                 </div>""", unsafe_allow_html=True)
 
-        st.write("")
+        st.markdown('<div style="height:0.5rem"></div>', unsafe_allow_html=True)
 
         # ── Insights estratégicos ──────────────────────────────────────────
         sec("💡 Insights para Tomada de Decisão")
