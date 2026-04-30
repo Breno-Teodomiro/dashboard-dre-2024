@@ -118,6 +118,13 @@ def calcular_dre_cached(trimestre, regiao, filial, categoria):
     dff = _filtrar(trimestre, regiao, filial, categoria)
     return _dre(dff), dff
 
+def pct(num, den):
+    try:
+        d = float(den)
+        return float(num) / d * 100 if d != 0.0 else 0.0
+    except Exception:
+        return 0.0
+
 def _filtrar(trimestre, regiao, filial, categoria):
     dff = df.copy()
     if trimestre != "Todos": dff = dff[dff["trimestre"] == trimestre]
@@ -150,10 +157,10 @@ def _dre(dff):
         rb=rb, ded=ded, rl=rl, cmv=cmv, csp=csp, lb=lb,
         dc=dc, da=da, ebit=ebit, res_fin=res_fin, out=out,
         lair=lair, imp=imp, ll=ll,
-        mg_bruta=(lb/rl*100) if rl else 0,
-        mg_ebit=(ebit/rl*100) if rl else 0,
-        mg_liq=(ll/rl*100) if rl else 0,
-        taxa_ded=(abs(ded)/rb*100) if rb else 0,
+        mg_bruta=pct(lb, rl),
+        mg_ebit=pct(ebit, rl),
+        mg_liq=pct(ll, rl),
+        taxa_ded=pct(abs(ded), rb),
         custo_direto=abs(cmv)+abs(csp),
         desp_op=abs(dc)+abs(da),
     )
