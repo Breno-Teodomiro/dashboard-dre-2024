@@ -21,7 +21,17 @@ C = {
     "text":    "#e8edf8", "muted":  "#7a9cc6", "grid":   "#112244",
 }
 
-PALETA = [C["blue"], C["cyan"], C["green"], C["yellow"], C["orange"], C["purple"], C["red"], "#4caf50"]
+PALETA      = [C["blue"], C["cyan"], C["green"], C["yellow"], C["orange"], C["purple"], C["red"], "#4caf50"]
+PALETA_FILL = [
+    "rgba(33,150,243,0.15)",   # blue
+    "rgba(0,188,212,0.15)",    # cyan
+    "rgba(0,230,118,0.15)",    # green
+    "rgba(255,215,64,0.15)",   # yellow
+    "rgba(255,152,0,0.15)",    # orange
+    "rgba(206,147,216,0.15)",  # purple
+    "rgba(255,82,82,0.15)",    # red
+    "rgba(76,175,80,0.15)",    # #4caf50
+]
 
 # ─── CSS ─────────────────────────────────────────────────────────────────────
 st.markdown(f"""
@@ -77,22 +87,24 @@ div[data-baseweb="select"] > div {{ background-color:{C['card2']} !important; bo
 SHEET_ID  = "1NN-6E7B0CBMmc1LWpXZjixxG2gbosSkvAO6ZHEb3YGo"
 SHEET_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv"
 
-@st.cache_data(ttl=300)   # recarrega do Sheets a cada 5 minutos
+@st.cache_data(ttl=300)
 def load_data():
+    from datetime import datetime
     try:
         df = pd.read_csv(SHEET_URL)
-        # detecta separador decimal baseado no dtype da coluna valor
         if df["valor"].dtype == object:
             df["valor"] = df["valor"].str.replace(",", ".").astype(float)
+        fonte = "Google Sheets"
     except Exception:
-        # fallback para arquivo local se o Sheets estiver inacessível
         df = pd.read_csv("DADOS/dre_dataset.csv", sep=";", decimal=",")
+        fonte = "arquivo local"
     df["data"]    = pd.to_datetime(df["data"])
     df["mes_ano"] = df["data"].dt.to_period("M").astype(str)
     df["mes_num"] = df["data"].dt.month
-    return df
+    ts = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    return df, ts, fonte
 
-df = load_data()
+df, ultima_atualizacao, fonte_dados = load_data()
 
 # ─── HELPERS ─────────────────────────────────────────────────────────────────
 def fmt_M(v):
@@ -188,10 +200,30 @@ with st.sidebar:
     <div style='color:{C["muted"]};font-size:10px;font-weight:700;letter-spacing:1px;margin-bottom:10px;'>FILTROS</div>
     """, unsafe_allow_html=True)
 
-    trimestre = st.selectbox("Trimestre", ["Todos"] + sorted(df["trimestre"].unique().tolist()))
-    regiao    = st.selectbox("Região",    ["Todas"] + sorted(df["regiao"].unique().tolist()))
-    filial    = st.selectbox("Filial",    ["Todas"] + sorted(df["filial_nome"].unique().tolist()))
-    categoria = st.selectbox("Categoria", ["Todas"] + sorted(df["categoria_produto"].dropna().unique().tolist()))
+    # inicializa session_state dos filtros
+    for key, default in [("f_tri","Todos"),("f_reg","Todas"),("f_fil","Todas"),("f_cat","Todas")]:
+        if key not in st.session_state:
+            st.session_state[key] = default
+
+    col_btn1, col_btn2 = st.columns(2)
+    with col_btn1:
+        if st.button("🔄 Atualizar", use_container_width=True):
+            st.cache_data.clear()
+            st.rerun()
+    with col_btn2:
+        if st.button("✖ Limpar", use_container_width=True):
+            st.session_state.f_tri = "Todos"
+            st.session_state.f_reg = "Todas"
+            st.session_state.f_fil = "Todas"
+            st.session_state.f_cat = "Todas"
+            st.rerun()
+
+    st.markdown("<div style='margin-bottom:8px;'></div>", unsafe_allow_html=True)
+
+    trimestre = st.selectbox("Trimestre", ["Todos"] + sorted(df["trimestre"].unique().tolist()), key="f_tri")
+    regiao    = st.selectbox("Região",    ["Todas"] + sorted(df["regiao"].unique().tolist()),    key="f_reg")
+    filial    = st.selectbox("Filial",    ["Todas"] + sorted(df["filial_nome"].unique().tolist()), key="f_fil")
+    categoria = st.selectbox("Categoria", ["Todas"] + sorted(df["categoria_produto"].dropna().unique().tolist()), key="f_cat")
 
     st.markdown(f"<hr style='border-color:{C['border']};margin:16px 0;'>", unsafe_allow_html=True)
 
@@ -205,9 +237,15 @@ with st.sidebar:
         <div style='margin-bottom:6px;'><b style='color:{C["text"]};'>Lucro Líquido:</b>
             <span style='color:{"#00e676" if dre_side["ll"]>=0 else "#ff5252"};font-weight:700;'>
             {fmt_M(dre_side["ll"])}</span></div>
-        <div><b style='color:{C["text"]};'>Margem Líq.:</b>
+        <div style='margin-bottom:10px;'><b style='color:{C["text"]};'>Margem Líq.:</b>
             <span style='color:{"#00e676" if dre_side["mg_liq"]>=0 else "#ff5252"};font-weight:700;'>
             {dre_side["mg_liq"]:.1f}%</span></div>
+        <div style='font-size:10px;border-top:1px solid {C["border"]};padding-top:8px;'>
+            🕐 <b style='color:{C["text"]};'>Atualizado:</b><br>{ultima_atualizacao}
+        </div>
+        <div style='font-size:10px;margin-top:4px;'>
+            📡 <b style='color:{C["text"]};'>Fonte:</b> {fonte_dados}
+        </div>
     </div>
     <hr style='border-color:{C["border"]};margin:16px 0;'>
     <div style='font-size:10px;color:{C["muted"]};text-align:center;line-height:1.7;'>
@@ -490,7 +528,7 @@ with tab2:
                 x=d["mes_ano"], y=d["valor"], name=cat,
                 stackgroup="one", mode="lines",
                 line=dict(color=PALETA[i], width=1),
-                fillcolor=PALETA[i].replace("#","rgba(") + "50)" if "#" in PALETA[i] else PALETA[i],
+                fillcolor=PALETA_FILL[i],
                 hovertemplate=f"<b>{cat}</b><br>%{{x}}: R$ %{{y:,.0f}}<extra></extra>",
             ))
         fig.update_layout(**chart_base(300), margin=dict(l=8,r=8,t=30,b=50),
