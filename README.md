@@ -165,4 +165,5 @@ O Streamlit detecta o push e atualiza automaticamente em ~1 minuto.
 
 **Breno Teodomiro**
 - GitHub: [@Breno-Teodomiro](https://github.com/Breno-Teodomiro)
+- LinkedIn: [breno-teodomiro-power-bi](https://www.linkedin.com/in/breno-teodomiro-power-bi/)
 - Email: insights.jobs.ia@gmail.com
