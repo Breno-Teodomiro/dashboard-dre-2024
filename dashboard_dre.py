@@ -92,13 +92,19 @@ def load_data():
     from datetime import datetime
     try:
         df = pd.read_csv(SHEET_URL)
-        if df["valor"].dtype == object:
-            df["valor"] = df["valor"].str.replace(",", ".").astype(float)
         fonte = "Google Sheets"
     except Exception:
         df = pd.read_csv("DADOS/dre_dataset.csv", sep=";", decimal=",")
-        fonte = "arquivo local"
-    df["data"]    = pd.to_datetime(df["data"])
+        fonte = "arquivo local (fallback)"
+    # garante coluna valor sempre numérica, independente do formato
+    df["valor"] = (
+        df["valor"].astype(str)
+        .str.replace(r"\.", "", regex=True)      # remove separador de milhar (ponto)
+        .str.replace(",", ".", regex=False)       # converte decimal BR para EN
+        .pipe(pd.to_numeric, errors="coerce")
+        .fillna(0.0)
+    )
+    df["data"]    = pd.to_datetime(df["data"], errors="coerce")
     df["mes_ano"] = df["data"].dt.to_period("M").astype(str)
     df["mes_num"] = df["data"].dt.month
     ts = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
@@ -134,18 +140,23 @@ def _filtrar(trimestre, regiao, filial, categoria):
     return dff
 
 def _dre(dff):
-    g   = dff.groupby("grupo_dre")["valor"].sum()
-    rb  = g.get("Receita Bruta", 0)
-    ded = g.get("Deduções", 0)
-    cmv = g.get("CMV", 0)
-    csp = g.get("CSP", 0)
-    dc  = g.get("Despesas Comerciais", 0)
-    da  = g.get("Despesas Administrativas", 0)
-    rf  = g.get("Receitas Financeiras", 0)
-    df_ = g.get("Despesas Financeiras", 0)
-    or_ = g.get("Outras Receitas", 0)
-    od  = g.get("Outras Despesas", 0)
-    imp = g.get("Impostos sobre Lucro", 0)
+    g = dff.groupby("grupo_dre")["valor"].sum()
+    def gv(key):
+        try:
+            return float(g.get(key, 0))
+        except Exception:
+            return 0.0
+    rb  = gv("Receita Bruta")
+    ded = gv("Deduções")
+    cmv = gv("CMV")
+    csp = gv("CSP")
+    dc  = gv("Despesas Comerciais")
+    da  = gv("Despesas Administrativas")
+    rf  = gv("Receitas Financeiras")
+    df_ = gv("Despesas Financeiras")
+    or_ = gv("Outras Receitas")
+    od  = gv("Outras Despesas")
+    imp = gv("Impostos sobre Lucro")
     rl  = rb + ded
     lb  = rl + cmv + csp
     ebit   = lb + dc + da
