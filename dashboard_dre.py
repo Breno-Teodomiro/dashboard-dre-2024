@@ -114,7 +114,6 @@ def fmt_M(v):
 
 def fmt_pct(v): return f"{v:.1f}%"
 
-@st.cache_data
 def calcular_dre_cached(trimestre, regiao, filial, categoria):
     dff = _filtrar(trimestre, regiao, filial, categoria)
     return _dre(dff), dff
